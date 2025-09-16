@@ -1,10 +1,12 @@
-﻿namespace Server
+﻿using Microsoft.Extensions.Logging;
+using Server;
+
+using var loggerFactory = LoggerFactory.Create(builder =>
 {
-    internal class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Hello, World!");
-        }
-    }
-}
+    builder.AddConsole();
+});
+
+ILogger<TcpServer> logger = loggerFactory.CreateLogger<TcpServer>();
+TcpServer server = new(2000, logger);
+
+await server.StartServer();

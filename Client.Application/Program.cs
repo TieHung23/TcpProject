@@ -1,3 +1,5 @@
+using Client.Application.ClientHearing;
+
 namespace Client.Application
 {
     public class Program
@@ -6,9 +8,8 @@ namespace Client.Application
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
             builder.Services.AddControllersWithViews();
-
+            builder.Services.AddSingleton<IClient, Client.Application.ClientHearing.Client>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
