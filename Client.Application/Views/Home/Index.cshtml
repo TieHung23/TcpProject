@@ -23,24 +23,15 @@
                 <input type="text" name="Name" class="form-control" value="@Model.Name" placeholder="Enter your name" />
             </div>
 
-            <button type="submit" class="btn btn-primary">Check Connection</button>
+            <div class="d-flex gap-2">
+                <button type="submit" name="Action" value="chat" class="btn btn-primary">Start Chat</button>
+                <button type="submit" name="Action" value="file" class="btn btn-secondary">Start Sending File</button>
+            </div>
         </form>
 
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
         {
             <div class="alert alert-danger mt-3">@Model.ErrorMessage</div>
         }
-    }
-    else
-    {
-        <h4 class="text-success">Connected as @Model.Name to @Model.Ip:@Model.Port</h4>
-
-        <form method="post" action="/Chat/SendMessage">
-            <div class="mb-3">
-                <label for="message" class="form-label">Message</label>
-                <input type="text" name="Message" class="form-control" placeholder="Type your message..." />
-            </div>
-            <button type="submit" class="btn btn-success">Send</button>
-        </form>
     }
 </div>

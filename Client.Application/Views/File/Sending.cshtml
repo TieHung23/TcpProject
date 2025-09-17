@@ -1,0 +1,33 @@
+﻿@model Client.Application.Controllers.UserModel
+@{
+    ViewData["Title"] = "Send File";
+}
+
+<div class="container mt-4">
+    <h2 class="text-center text-primary">Send File</h2>
+    <h3>
+        Connected as <b>@Model.Name</b> to
+        <span class="text-warning">@Model.Ip:@Model.Port</span>
+    </h3>
+
+    <form method="post" enctype="multipart/form-data" action="/File/Sending">
+        <div class="mb-3">
+            <label for="file" class="form-label">Choose a file</label>
+            <input type="file" name="file" class="form-control" required />
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">Send File</button>
+            <a href="/" class="btn btn-secondary">Back</a>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrEmpty(ViewBag.Message))
+    {
+        <div class="alert alert-success mt-3">@ViewBag.Message</div>
+    }
+    @if (!string.IsNullOrEmpty(ViewBag.Error))
+    {
+        <div class="alert alert-danger mt-3">@ViewBag.Error</div>
+    }
+</div>

@@ -48,41 +48,100 @@ namespace Server
         private async Task HandleClientAsync(TcpClient client, string ipAddressClient)
         {
             using NetworkStream stream = client.GetStream();
-            byte[] buffer = new byte[1024];
+            var buffer = new byte[4];
 
-            while (true)
+            try
             {
-                int byteCount;
-                try
+                while (true)
                 {
-                    byteCount = await stream.ReadAsync(buffer, 0, buffer.Length);
-                }
-                catch { break; }
+                    int readType = await stream.ReadAsync(buffer, 0, 1);
+                    if (readType == 0) break;
 
-                if (byteCount == 0) break;
+                    byte dataType = buffer[0];
 
-                var message = Encoding.UTF8.GetString(buffer, 0, byteCount);
-                lock (_messages) _messages.Add(message);
-
-                lock (_clients)
-                {
-                    foreach (var cl in _clients.ToList())
+                    if (dataType == 0)
                     {
-                        try
+                        await stream.ReadAsync(buffer, 0, 4);
+                        int messageLength = BitConverter.ToInt32(buffer, 0);
+
+                        var messageBytes = new byte[messageLength];
+                        int totalRead = 0;
+                        while (totalRead < messageLength)
                         {
-                            var writer = cl.GetStream();
-                            var data = Encoding.UTF8.GetBytes(message);
-                            writer.Write(data, 0, data.Length);
+                            int read = await stream.ReadAsync(messageBytes, totalRead, messageLength - totalRead);
+                            if (read == 0) break;
+                            totalRead += read;
                         }
-                        catch
+
+                        var message = Encoding.UTF8.GetString(messageBytes);
+
+                        lock (_messages) _messages.Add(message);
+
+                        lock (_clients)
                         {
-                            _clients.Remove(cl);
+                            foreach (var cl in _clients.ToList())
+                            {
+                                try
+                                {
+                                    var writer = cl.GetStream();
+                                    var data = Encoding.UTF8.GetBytes(message);
+                                    writer.Write(data, 0, data.Length);
+                                }
+                                catch
+                                {
+                                    _clients.Remove(cl);
+                                }
+                            }
                         }
+
+                        _logger.LogInformation($"[CHAT] Received from {ipAddressClient}: {message}");
+                    }
+                    else if (dataType == 1)
+                    {
+                        await stream.ReadAsync(buffer, 0, 4);
+                        int usernameLength = BitConverter.ToInt32(buffer, 0);
+
+                        var usernameBytes = new byte[usernameLength];
+                        await stream.ReadAsync(usernameBytes, 0, usernameLength);
+                        string username = Encoding.UTF8.GetString(usernameBytes);
+
+                        await stream.ReadAsync(buffer, 0, 4);
+                        int fileNameLength = BitConverter.ToInt32(buffer, 0);
+
+                        var fileNameBytes = new byte[fileNameLength];
+                        await stream.ReadAsync(fileNameBytes, 0, fileNameLength);
+                        string fileName = Encoding.UTF8.GetString(fileNameBytes);
+
+                        var fileLengthBytes = new byte[8];
+                        await stream.ReadAsync(fileLengthBytes, 0, 8);
+                        long fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
+
+                        Directory.CreateDirectory("Uploads");
+                        string path = Path.Combine("Uploads", fileName);
+
+                        using (var fs = File.Create(path))
+                        {
+                            byte[] chunk = new byte[8192];
+                            long totalRead = 0;
+
+                            while (totalRead < fileLength)
+                            {
+                                int read = await stream.ReadAsync(chunk, 0, chunk.Length);
+                                if (read == 0) break;
+                                await fs.WriteAsync(chunk, 0, read);
+                                totalRead += read;
+                            }
+                        }
+
+                        _logger.LogInformation($"[FILE] {username} uploaded {fileName} ({fileLength} bytes) from {ipAddressClient}");
                     }
                 }
-
-                _logger.LogInformation($"Received from {ipAddressClient}: {message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Client {ipAddressClient} disconnected: {ex.Message}");
             }
         }
+
     }
 }

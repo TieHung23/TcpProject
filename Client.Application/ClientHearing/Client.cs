@@ -35,9 +35,16 @@ namespace Client.Application.ClientHearing
         {
             if (_stream == null) return;
 
+            byte dataType = 0;
+            await _stream.WriteAsync(new byte[] { dataType }, 0, 1);
+
             var data = Encoding.UTF8.GetBytes(message);
+            var lengthBytes = BitConverter.GetBytes(data.Length);
+
+            await _stream.WriteAsync(lengthBytes, 0, lengthBytes.Length);
             await _stream.WriteAsync(data, 0, data.Length);
         }
+
         public List<string> GetMessages()
         {
             lock (_messages) return _messages.ToList();
