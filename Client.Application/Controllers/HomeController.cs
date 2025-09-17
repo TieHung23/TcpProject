@@ -5,10 +5,21 @@ using System.Diagnostics;
 
 namespace Client.Application.Controllers
 {
+    public class ConnectModel
+    {
+        public string Ip { get; set; } = "";
+        public int Port { get; set; }
+        public string Name { get; set; } = "";
+        public bool Connected { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
+
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
         private readonly IClient _client;
+
 
         public HomeController(ILogger<HomeController> logger, IClient client)
         {
@@ -18,10 +29,30 @@ namespace Client.Application.Controllers
 
         public IActionResult Index()
         {
-            _client.ConnectToServer("192.168.1.117", 2000);
-            _client.SendingData("Hellooooo");
+            return View(new ConnectModel());
+        }
 
-            return View();
+        [HttpPost]
+        public async Task<IActionResult> Index(ConnectModel model)
+        {
+            try
+            {
+                await _client.ConnectToServer(model.Ip, model.Port);
+
+                HttpContext.Session.SetString("UserName", model.Name);
+                HttpContext.Session.SetString("Ip", model.Ip);
+                HttpContext.Session.SetInt32("Port", model.Port);
+
+                return RedirectToAction("Message", "Chat");
+            }
+            catch (Exception ex)
+            {
+                model.Connected = false;
+                model.ErrorMessage = $"Connection failed: {ex.Message}";
+
+                return View(model);
+            }
+
         }
 
         public IActionResult Privacy()
