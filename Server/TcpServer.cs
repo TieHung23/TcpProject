@@ -10,6 +10,9 @@ namespace Server
         private readonly int _port;
         private readonly ILogger<TcpServer> _logger;
 
+        private static readonly List<TcpClient> _clients = new();
+        private static readonly List<string> _messages = new();
+
         public TcpServer(int port, ILogger<TcpServer> logger)
         {
             _port = port;
@@ -28,11 +31,18 @@ namespace Server
             {
                 TcpClient client = await server.AcceptTcpClientAsync();
                 IPEndPoint? remoteEndPoint = client.Client.RemoteEndPoint as IPEndPoint;
-                var ipAddressClient = remoteEndPoint?.Port.ToString() ?? "Anonymous";
+                var ipAddressClient = remoteEndPoint?.Address.ToString() ?? "Anonymous";
+
                 _logger.LogInformation($"Client from {ipAddressClient} is connected");
 
+                lock (_clients) _clients.Add(client);
                 _ = HandleClientAsync(client, ipAddressClient);
             }
+        }
+
+        public static List<string> GetMessages()
+        {
+            lock (_messages) return _messages.ToList();
         }
 
         private async Task HandleClientAsync(TcpClient client, string ipAddressClient)
@@ -42,19 +52,36 @@ namespace Server
 
             while (true)
             {
-                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                if (bytesRead == 0)
+                int byteCount;
+                try
                 {
-                    _logger.LogInformation($"Client from {ipAddressClient} is disconnected");
-                    break;
+                    byteCount = await stream.ReadAsync(buffer, 0, buffer.Length);
+                }
+                catch { break; }
+
+                if (byteCount == 0) break;
+
+                var message = Encoding.UTF8.GetString(buffer, 0, byteCount);
+                lock (_messages) _messages.Add(message);
+
+                lock (_clients)
+                {
+                    foreach (var cl in _clients.ToList())
+                    {
+                        try
+                        {
+                            var writer = cl.GetStream();
+                            var data = Encoding.UTF8.GetBytes(message);
+                            writer.Write(data, 0, data.Length);
+                        }
+                        catch
+                        {
+                            _clients.Remove(cl);
+                        }
+                    }
                 }
 
-                string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                _logger.LogInformation($"Receive : {message}");
-
-                string response = $"Server received: {message}";
-                byte[] responseBytes = Encoding.UTF8.GetBytes(response);
-                await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+                _logger.LogInformation($"Received from {ipAddressClient}: {message}");
             }
         }
     }

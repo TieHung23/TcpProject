@@ -5,5 +5,7 @@
         Task ConnectToServer(string ip, int port);
 
         Task SendingData(string message);
+
+        List<string> GetMessages();
     }
 }
