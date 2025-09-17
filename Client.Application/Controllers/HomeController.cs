@@ -12,6 +12,7 @@ namespace Client.Application.Controllers
         public string Name { get; set; } = "";
         public bool Connected { get; set; }
         public string? ErrorMessage { get; set; }
+        public string Action { get; set; } = "";
     }
 
 
@@ -42,8 +43,8 @@ namespace Client.Application.Controllers
                 HttpContext.Session.SetString("UserName", model.Name);
                 HttpContext.Session.SetString("Ip", model.Ip);
                 HttpContext.Session.SetInt32("Port", model.Port);
-
-                return RedirectToAction("Message", "Chat");
+                if (model.Action.Equals("chat")) return RedirectToAction("Message", "Chat");
+                else return RedirectToAction("Sending", "File");
             }
             catch (Exception ex)
             {

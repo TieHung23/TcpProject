@@ -15,6 +15,10 @@ namespace Client.Application
                 options.Cookie.HttpOnly = true;
                 options.Cookie.IsEssential = true;
             });
+            builder.WebHost.ConfigureKestrel(serverOptions =>
+            {
+                serverOptions.Limits.MaxRequestBodySize = 2L * 1024 * 1024 * 1024;
+            });
             builder.Services.AddSingleton<IClient, Client.Application.ClientHearing.Client>();
             var app = builder.Build();
 
